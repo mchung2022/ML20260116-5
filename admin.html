@@ -2,75 +2,140 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>高中點名系統 - 後端管理</title>
+    <title>後端管理系統</title>
     <style>
-        body { font-family: "Microsoft JhengHei", sans-serif; background: #eceff1; padding: 20px; }
-        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; }
-        h1 { color: #2c3e50; border-left: 5px solid #3498db; padding-left: 15px; }
+        body { font-family: "Microsoft JhengHei", sans-serif; background: #eceff1; padding: 20px; display: none; } /* 預設隱藏防止閃爍 */
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { border-left: 5px solid #3498db; padding-left: 15px; color: #2c3e50; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
         th { background: #f8f9fa; }
-        .absent-tag { color: white; background: #e74c3c; padding: 2px 6px; border-radius: 3px; font-size: 12px; }
-        .late-tag { color: white; background: #f39c12; padding: 2px 6px; border-radius: 3px; font-size: 12px; }
-        .btn-clear { background: #95a5a6; color: white; border: none; padding: 8px; cursor: pointer; margin-bottom: 10px; }
+        .absent { color: #e74c3c; font-weight: bold; }
+        .late { color: #f39c12; font-weight: bold; }
+        .btn-edit { background: #3498db; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; }
+        .edit-panel { background: #f9f9f9; padding: 15px; border: 1px solid #ddd; margin-top: 10px; display: none; }
+        .status-btn { padding: 4px 8px; margin-right: 5px; cursor: pointer; border: 1px solid #ccc; background: #fff; }
+        .status-btn.active { background: #3498db; color: white; }
     </style>
 </head>
-<body>
+<body id="adminBody">
 
 <div class="container">
-    <a href="index.html">← 返回點名頁面</a>
-    <h1>後端點名紀錄統計</h1>
+    <div style="display:flex; justify-content: space-between; align-items: center;">
+        <a href="index.html">← 返回前端點名</a>
+        <button onclick="logout()" style="padding: 5px 10px;">登出系統</button>
+    </div>
+    <h1>後端點名紀錄管理</h1>
     
-    <button class="btn-clear" onclick="clearData()">清空所有歷史資料</button>
-
     <table id="adminTable">
         <thead>
             <tr>
-                <th>日期時間</th>
-                <th>總人數</th>
+                <th>時間</th>
+                <th>課程名稱</th>
+                <th>教師</th>
                 <th>缺席/遲到名單</th>
-                <th>摘要</th>
+                <th>操作</th>
             </tr>
         </thead>
         <tbody id="historyBody"></tbody>
     </table>
+
+    <!-- 修改面板 -->
+    <div id="editPanel" class="edit-panel">
+        <h3>修改紀錄 - <span id="editDate"></span></h3>
+        <div id="editStudents"></div>
+        <div style="margin-top: 15px;">
+            <button onclick="saveEdit()" style="background: #27ae60; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">儲存修改內容</button>
+            <button onclick="closeEdit()" style="background: #95a5a6; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">取消</button>
+        </div>
+    </div>
 </div>
 
 <script>
+    let currentEditId = null;
+    let records = [];
+
+    // 密碼保護邏輯
+    function checkAuth() {
+        const pass = prompt("請輸入管理員密碼：");
+        if (pass === "1111") {
+            document.body.style.display = "block";
+            loadData();
+        } else {
+            alert("密碼錯誤！");
+            window.location.href = "index.html";
+        }
+    }
+
     function loadData() {
-        const history = JSON.parse(localStorage.getItem('school_records') || '[]');
+        records = JSON.parse(localStorage.getItem('school_records') || '[]');
         const tbody = document.getElementById('historyBody');
         tbody.innerHTML = '';
 
-        history.forEach(record => {
+        records.forEach((record, index) => {
             const tr = document.createElement('tr');
-            
-            // 找出異常學生
             const anomalies = record.details
                 .filter(s => s.status !== 'present')
-                .map(s => `${s.name} <span class="${s.status}-tag">${s.status === 'absent' ? '缺席' : '遲到'}</span>`)
-                .join(', ') || '無缺席';
+                .map(s => `${s.name}(${s.status === 'absent' ? '缺' : '遲'})`)
+                .join(', ') || '無';
 
             tr.innerHTML = `
                 <td>${record.date}</td>
-                <td>${record.summary.total}</td>
+                <td>${record.course}</td>
+                <td>${record.teacher}</td>
                 <td>${anomalies}</td>
-                <td>缺席: ${record.summary.absent} | 遲到: ${record.summary.late}</td>
+                <td><button class="btn-edit" onclick="openEdit(${record.id})">修改</button></td>
             `;
             tbody.appendChild(tr);
         });
     }
 
-    function clearData() {
-        if(confirm('確定要清空後端所有歷史紀錄嗎？')) {
-            localStorage.removeItem('school_records');
-            loadData();
-        }
+    function openEdit(id) {
+        currentEditId = id;
+        const record = records.find(r => r.id === id);
+        document.getElementById('editDate').innerText = record.date;
+        const container = document.getElementById('editStudents');
+        container.innerHTML = '';
+
+        record.details.forEach((s, i) => {
+            const div = document.createElement('div');
+            div.style.marginBottom = '10px';
+            div.innerHTML = `
+                <span style="display:inline-block; width:80px">${s.name}:</span>
+                <button class="status-btn ${s.status==='present'?'active':''}" onclick="updateTempStatus(${i}, 'present')">到校</button>
+                <button class="status-btn ${s.status==='absent'?'active':''}" onclick="updateTempStatus(${i}, 'absent')">缺席</button>
+                <button class="status-btn ${s.status==='late'?'active':''}" onclick="updateTempStatus(${i}, 'late')">遲到</button>
+            `;
+            container.appendChild(div);
+        });
+        document.getElementById('editPanel').style.display = 'block';
+        window.scrollTo(0, document.body.scrollHeight);
     }
 
-    loadData();
-    // 每 5 秒自動更新一次 (模擬後端即時接收)
-    setInterval(loadData, 5000);
+    function updateTempStatus(studentIdx, newStatus) {
+        const record = records.find(r => r.id === currentEditId);
+        record.details[studentIdx].status = newStatus;
+        openEdit(currentEditId); // 刷新介面
+    }
+
+    function saveEdit() {
+        localStorage.setItem('school_records', JSON.stringify(records));
+        alert('紀錄已成功更新！');
+        document.getElementById('editPanel').style.display = 'none';
+        loadData();
+    }
+
+    function closeEdit() {
+        document.getElementById('editPanel').style.display = 'none';
+        loadData(); // 放棄修改，重新讀取
+    }
+
+    function logout() {
+        window.location.reload();
+    }
+
+    // 啟動密碼驗證
+    checkAuth();
 </script>
 </body>
 </html>
