@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>高中點名系統 - 後端管理</title>
+    <style>
+        body { font-family: "Microsoft JhengHei", sans-serif; background: #eceff1; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; }
+        h1 { color: #2c3e50; border-left: 5px solid #3498db; padding-left: 15px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background: #f8f9fa; }
+        .absent-tag { color: white; background: #e74c3c; padding: 2px 6px; border-radius: 3px; font-size: 12px; }
+        .late-tag { color: white; background: #f39c12; padding: 2px 6px; border-radius: 3px; font-size: 12px; }
+        .btn-clear { background: #95a5a6; color: white; border: none; padding: 8px; cursor: pointer; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <a href="index.html">← 返回點名頁面</a>
+    <h1>後端點名紀錄統計</h1>
+    
+    <button class="btn-clear" onclick="clearData()">清空所有歷史資料</button>
+
+    <table id="adminTable">
+        <thead>
+            <tr>
+                <th>日期時間</th>
+                <th>總人數</th>
+                <th>缺席/遲到名單</th>
+                <th>摘要</th>
+            </tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+    </table>
+</div>
+
+<script>
+    function loadData() {
+        const history = JSON.parse(localStorage.getItem('school_records') || '[]');
+        const tbody = document.getElementById('historyBody');
+        tbody.innerHTML = '';
+
+        history.forEach(record => {
+            const tr = document.createElement('tr');
+            
+            // 找出異常學生
+            const anomalies = record.details
+                .filter(s => s.status !== 'present')
+                .map(s => `${s.name} <span class="${s.status}-tag">${s.status === 'absent' ? '缺席' : '遲到'}</span>`)
+                .join(', ') || '無缺席';
+
+            tr.innerHTML = `
+                <td>${record.date}</td>
+                <td>${record.summary.total}</td>
+                <td>${anomalies}</td>
+                <td>缺席: ${record.summary.absent} | 遲到: ${record.summary.late}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function clearData() {
+        if(confirm('確定要清空後端所有歷史紀錄嗎？')) {
+            localStorage.removeItem('school_records');
+            loadData();
+        }
+    }
+
+    loadData();
+    // 每 5 秒自動更新一次 (模擬後端即時接收)
+    setInterval(loadData, 5000);
+</script>
+</body>
+</html>
