@@ -2,42 +2,50 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>高中點名系統 - 前端點名</title>
+    <title>高中座位點名系統 - 前端</title>
     <style>
         :root { --primary: #2c3e50; --secondary: #3498db; --absent: #e74c3c; --late: #f39c12; --present: #2ecc71; }
-        body { font-family: "Microsoft JhengHei", sans-serif; background: #f4f7f6; margin: 0; padding: 20px; }
-        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        .nav { margin-bottom: 20px; padding: 10px; background: #eee; border-radius: 5px; text-align: right; }
-        .config-area { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; background: #eef2f3; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        body { font-family: "Microsoft JhengHei", sans-serif; background: #f4f7f6; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .config-area { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #eee; }
+        .input-item { margin-bottom: 10px; }
+        input, textarea { padding: 8px; border: 1px solid #ddd; border-radius: 4px; width: 100%; box-sizing: border-box; }
         .seating-chart { display: grid; gap: 10px; justify-content: center; margin-top: 20px; }
-        .seat-slot { width: 100px; height: 80px; border: 2px dashed #ccc; border-radius: 5px; position: relative; }
-        .student-card { width: 100%; height: 100%; background: white; border: 2px solid var(--secondary); border-radius: 5px; cursor: grab; display: flex; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box; }
+        .seat-slot { width: 100px; height: 85px; border: 2px dashed #ccc; border-radius: 5px; position: relative; }
+        .student-card { width: 100%; height: 100%; background: white; border: 2px solid var(--secondary); border-radius: 5px; cursor: grab; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.2s; }
         .student-card.absent { border-color: var(--absent); background: #fff5f5; }
         .student-card.late { border-color: var(--late); background: #fffdf5; }
         .student-card.present { border-color: var(--present); background: #f5fff5; }
-        .stage { width: 200px; background: #ddd; margin: 0 auto 30px; text-align: center; padding: 10px; border-radius: 0 0 10px 10px; font-weight: bold; }
-        .btn { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .btn-submit { background: var(--primary); color: white; width: 100%; margin-top: 20px; font-size: 18px; }
-        .btn-rand { background: #9b59b6; color: white; }
+        .stage { width: 240px; background: #333; color: white; margin: 0 auto 30px; text-align: center; padding: 8px; border-radius: 0 0 15px 15px; }
+        .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-submit { background: var(--primary); color: white; width: 100%; font-size: 1.1em; margin-top: 20px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="nav">
-        <a href="admin.html">進入管理後端 (歷史紀錄)</a>
+    <div style="text-align: right; margin-bottom: 10px;">
+        <a href="admin.html" style="color: #666; text-decoration: none; font-size: 0.9em;">🔐 進入後端管理</a>
     </div>
-    <h1>校園座位點名系統</h1>
+    <h2 style="text-align: center; color: var(--primary);">高中教室點名系統</h2>
 
     <div class="config-area">
         <div>
-            <label>學生名單 (逗號分隔):</label><br>
-            <textarea id="nameList" rows="3" style="width:90%">王小明,李小華,張大同,陳美玲,林志穎,趙又廷,周杰倫,蔡依林</textarea>
+            <div class="input-item">
+                <label>課程名稱：</label>
+                <input type="text" id="courseName" placeholder="例如：高二甲班 物理課">
+            </div>
+            <div class="input-item">
+                <label>授課教師：</label>
+                <input type="text" id="teacherName" placeholder="例如：王大明 老師">
+            </div>
         </div>
         <div>
-            配置：<input type="number" id="rows" value="4" style="width:40px"> 行 × 
-            <input type="number" id="cols" value="4" style="width:40px"> 列
-            <button class="btn btn-rand" onclick="generate(true)">隨機排座</button>
+            <label>名單 (逗號隔開)：</label>
+            <textarea id="nameList" rows="3">王小明,李小華,張大同,陳美玲,林志穎,趙又廷,周杰倫,蔡依林</textarea>
+            <div style="margin-top: 5px;">
+                <button class="btn" style="background:#9b59b6; color:white" onclick="generate(true)">隨機排列</button>
+            </div>
         </div>
     </div>
 
@@ -53,19 +61,16 @@
     function generate(shuffle = false) {
         const names = document.getElementById('nameList').value.split(/[,\n，]/).map(s => s.trim()).filter(s => s);
         if(shuffle) names.sort(() => Math.random() - 0.5);
-        
-        studentData = names.map((name, i) => ({ id: i, name: name, status: 'present' }));
+        studentData = names.map((name, i) => ({ id: Date.now()+i, name: name, status: 'present' }));
         render();
     }
 
     function render() {
-        const rows = document.getElementById('rows').value;
-        const cols = document.getElementById('cols').value;
         const chart = document.getElementById('chart');
-        chart.style.gridTemplateColumns = `repeat(${cols}, 100px)`;
+        chart.style.gridTemplateColumns = `repeat(4, 100px)`; // 預設4列
         chart.innerHTML = '';
 
-        for (let i = 0; i < rows * cols; i++) {
+        for (let i = 0; i < studentData.length + 2; i++) { // 多留兩個空位
             const slot = document.createElement('div');
             slot.className = 'seat-slot';
             slot.dataset.idx = i;
@@ -76,7 +81,7 @@
                 const card = document.createElement('div');
                 card.className = `student-card ${studentData[i].status}`;
                 card.draggable = true;
-                card.innerHTML = `<span>${studentData[i].name}</span><small>${getStatusText(studentData[i].status)}</small>`;
+                card.innerHTML = `<span style="font-weight:bold">${studentData[i].name}</span><small>${getStatusText(studentData[i].status)}</small>`;
                 card.dataset.idx = i;
                 card.ondragstart = e => e.dataTransfer.setData('text', e.target.dataset.idx);
                 card.onclick = () => toggleStatus(i);
@@ -97,30 +102,30 @@
     function handleDrop(e) {
         const fromIdx = e.dataTransfer.getData('text');
         const toIdx = this.dataset.idx;
-        [studentData[fromIdx], studentData[toIdx]] = [studentData[toIdx], studentData[fromIdx]];
+        const temp = studentData[fromIdx];
+        studentData[fromIdx] = studentData[toIdx];
+        studentData[toIdx] = temp;
         render();
     }
 
     function submitAttendance() {
+        const course = document.getElementById('courseName').value;
+        const teacher = document.getElementById('teacherName').value;
+        if(!course || !teacher) return alert('請填寫課程名稱與教師姓名');
+
         const record = {
+            id: Date.now(),
             date: new Date().toLocaleString(),
-            timestamp: Date.now(),
-            details: studentData.filter(s => s).map(s => ({ name: s.name, status: s.status })),
-            summary: {
-                total: studentData.filter(s => s).length,
-                absent: studentData.filter(s => s && s.status === 'absent').length,
-                late: studentData.filter(s => s && s.status === 'late').length
-            }
+            course: course,
+            teacher: teacher,
+            details: studentData.filter(s => s).map(s => ({ name: s.name, status: s.status }))
         };
 
-        // 模擬發送到後端 (儲存至 localStorage)
         let history = JSON.parse(localStorage.getItem('school_records') || '[]');
         history.unshift(record);
         localStorage.setItem('school_records', JSON.stringify(history));
-
-        alert('今日點名資料已成功傳送至後端系統！');
+        alert('提交成功！資料已送往後端。');
     }
-
     generate();
 </script>
 </body>
